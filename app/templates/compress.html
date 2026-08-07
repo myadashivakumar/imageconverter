@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reduce Image Size</title>
+<style>
+  :root {
+    --bg-1: #0f172a;
+    --bg-2: #1e293b;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --card: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --danger: #dc2626;
+    --success: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+  }
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    padding: 32px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 16px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--accent); }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    color: var(--text);
+  }
+  p.subtitle {
+    margin: 0 0 24px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .dropzone:hover,
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: #eef2ff;
+  }
+  .dropzone svg { width: 36px; height: 36px; color: var(--accent); margin-bottom: 8px; }
+  .dropzone-text { color: var(--text); font-weight: 600; font-size: 14px; }
+  .dropzone-hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  input[type="file"] { display: none; }
+
+  .preview-row {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .preview-row.visible { display: flex; }
+  .preview-row img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #f1f5f9;
+  }
+  .preview-info { flex: 1; min-width: 0; }
+  .preview-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-size { font-size: 12px; color: var(--muted); }
+  .icon-btn {
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .icon-btn:hover { color: var(--accent); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .remove-btn {
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+  }
+  .remove-btn:hover { color: var(--danger); }
+
+  .section { display: none; margin-top: 18px; }
+  .section.visible { display: block; }
+  .section-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  /* Cropper */
+  .cropper-image-wrap {
+    position: relative;
+    max-width: 100%;
+    line-height: 0;
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    user-select: none;
+  }
+  .cropper-image-wrap img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .crop-box {
+    position: absolute;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.55);
+    cursor: move;
+    touch-action: none;
+  }
+  .crop-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    touch-action: none;
+  }
+  .crop-handle.nw { left: -8px; top: -8px; cursor: nwse-resize; }
+  .crop-handle.ne { right: -8px; top: -8px; cursor: nesw-resize; }
+  .crop-handle.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+  .crop-handle.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+  .crop-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .size-summary {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .size-summary strong { color: var(--text); }
+
+  .decision-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  button.decision-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+  }
+  button.decision-btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.decision-btn.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .mode-toggle {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .mode-btn {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .mode-btn.active {
+    background: #fff;
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  .controls { display: none; margin-top: 16px; }
+  .controls.visible { display: block; }
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .control-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .control-value { font-size: 13px; color: var(--muted); }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  select, input[type="number"], input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+    margin-top: 4px;
+  }
+  .control-group { margin-top: 16px; }
+  .control-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .quality-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .quality-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
+    width: 0%;
+    transition: width 0.2s ease;
+  }
+
+  button.primary {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.15s;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.visible { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error {
+    display: none;
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: var(--danger);
+    font-size: 13px;
+  }
+  .error.visible { display: block; }
+
+  .floor-note {
+    display: none;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 12px;
+  }
+  .floor-note.visible { display: block; }
+
+  .result {
+    display: none;
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+  .result.visible { display: block; }
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    color: var(--success);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .result-stats {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .result-stats strong { color: var(--text); }
+  .result-quality {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    margin-bottom: 12px;
+  }
+  .image-preview {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #f8fafc;
+    display: block;
+  }
+  .filename-group { margin-top: 14px; margin-bottom: 4px; }
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  a.download-btn, button.secondary {
+    flex: 1;
+    text-align: center;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+  }
+  a.download-btn {
+    background: var(--success);
+    color: #fff;
+  }
+  a.download-btn:hover { opacity: 0.9; }
+  button.secondary {
+    background: #f1f5f9;
+    color: var(--text);
+  }
+  button.secondary:hover { background: #e2e8f0; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <a class="back-link" href="/">&larr; All tools</a>
+    <h1>Reduce Image Size</h1>
+    <p class="subtitle">Upload, crop if you like, then decide whether to shrink the file size.</p>
+
+    <form id="upload-form">
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+          <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+        </svg>
+        <div class="dropzone-text">Click to choose an image, or drag one here</div>
+        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF supported</div>
+        <input type="file" name="file_photo" id="file_photo" accept="image/*">
+      </div>
+
+      <div class="preview-row" id="preview-row">
+        <img id="preview-thumb" src="" alt="">
+        <div class="preview-info">
+          <div class="preview-name" id="preview-name"></div>
+          <div class="preview-size" id="preview-size"></div>
+        </div>
+        <button type="button" class="remove-btn" id="remove-btn" aria-label="Remove file">&times;</button>
+      </div>
+
+      <!-- Step: crop -->
+      <div class="section" id="crop-section">
+        <div class="section-label">Crop (optional)</div>
+        <div class="cropper-image-wrap" id="cropper-wrap">
+          <img id="crop-image" src="" alt="Crop preview">
+          <div class="crop-box" id="crop-box">
+            <div class="crop-handle nw" data-handle="nw"></div>
+            <div class="crop-handle ne" data-handle="ne"></div>
+            <div class="crop-handle sw" data-handle="sw"></div>
+            <div class="crop-handle se" data-handle="se"></div>
+          </div>
+        </div>
+        <div class="crop-actions">
+          <button type="button" class="primary" id="apply-crop-btn" style="margin-top:0">Apply Crop</button>
+          <button type="button" class="secondary" id="skip-crop-btn">Use Original</button>
+        </div>
+      </div>
+
+      <!-- Step: decision -->
+      <div class="section" id="decision-section">
+        <div class="section-label">Current image</div>
+        <div class="size-summary" id="size-summary"></div>
+        <div class="quality-track"><div class="quality-fill" id="anchor-quality-fill" style="width:100%"></div></div>
+        <div class="control-hint" style="margin-bottom:4px">Original quality &mdash; nothing compressed yet</div>
+        <div class="control-label" style="margin-top:14px">Reduce the file size further?</div>
+        <div class="decision-row">
+          <button type="button" class="decision-btn" id="reduce-no-btn">No, use this</button>
+          <button type="button" class="decision-btn" id="reduce-yes-btn">Yes, reduce it</button>
+        </div>
+      </div>
+
+      <!-- Step: compression controls -->
+      <div class="section" id="compress-section">
+        <div class="section-label">How should we reduce it?</div>
+        <div class="mode-toggle" id="mode-toggle">
+          <button type="button" class="mode-btn active" data-mode="target">By Target Size</button>
+          <button type="button" class="mode-btn" data-mode="quality">By Quality</button>
+        </div>
+
+        <div class="controls visible" id="target-controls">
+          <div class="control-group">
+            <span class="control-label">Target file size (MB)</span>
+            <input type="number" id="target-size" min="0.01" step="any" value="0.5">
+          </div>
+        </div>
+
+        <div class="controls" id="quality-controls">
+          <div class="control-group">
+            <div class="control-row">
+              <span class="control-label">Quality</span>
+              <span class="control-value" id="quality-value">75</span>
+            </div>
+            <input type="range" id="quality" min="10" max="95" value="75" step="5">
+            <div class="quality-track"><div class="quality-fill" id="quality-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">Max dimension</span>
+          <select id="max-dimension">
+            <option value="0" selected>No resize</option>
+            <option value="1920">1920px</option>
+            <option value="1280">1280px</option>
+            <option value="1024">1024px</option>
+            <option value="800">800px</option>
+            <option value="640">640px</option>
+          </select>
+          <div class="control-hint">Quality always stays above 40% &mdash; if your target can't be reached without dropping lower, we stop there and get as close as we can.</div>
+        </div>
+
+        <button type="submit" class="primary" id="convert-btn">
+          <span class="spinner" id="spinner"></span>
+          <span id="convert-label">Reduce Size</span>
+        </button>
+      </div>
+    </form>
+
+    <div class="error" id="error-box"></div>
+
+    <div class="result" id="result">
+      <div class="result-header" id="result-header">&#10003; Ready to download</div>
+      <div class="result-stats" id="result-stats"></div>
+      <div class="result-quality" id="result-quality-label"></div>
+      <div class="quality-track" id="result-quality-track"><div class="quality-fill" id="result-quality-fill"></div></div>
+      <div class="floor-note" id="floor-note">Quality floor (40%) reached &mdash; this is the closest we could get to your target without lowering quality further.</div>
+      <img class="image-preview" id="image-preview" alt="Result preview" style="margin-top:14px">
+      <div class="control-group filename-group">
+        <span class="control-label">File name</span>
+        <input type="text" id="filename-input" spellcheck="false">
+      </div>
+      <div class="result-actions">
+        <a class="download-btn" id="download-link" download>Download Image</a>
+        <button type="button" class="secondary" id="reset-btn">Start over</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file_photo');
+    const previewRow = document.getElementById('preview-row');
+    const previewThumb = document.getElementById('preview-thumb');
+    const previewName = document.getElementById('preview-name');
+    const previewSize = document.getElementById('preview-size');
+    const removeBtn = document.getElementById('remove-btn');
+
+    const cropSection = document.getElementById('crop-section');
+    const cropperWrap = document.getElementById('cropper-wrap');
+    const cropImage = document.getElementById('crop-image');
+    const cropBox = document.getElementById('crop-box');
+    const applyCropBtn = document.getElementById('apply-crop-btn');
+    const skipCropBtn = document.getElementById('skip-crop-btn');
+
+    const decisionSection = document.getElementById('decision-section');
+    const sizeSummary = document.getElementById('size-summary');
+    const reduceYesBtn = document.getElementById('reduce-yes-btn');
+    const reduceNoBtn = document.getElementById('reduce-no-btn');
+
+    const compressSection = document.getElementById('compress-section');
+    const modeToggle = document.getElementById('mode-toggle');
+    const qualityControls = document.getElementById('quality-controls');
+    const targetControls = document.getElementById('target-controls');
+    const qualityInput = document.getElementById('quality');
+    const qualityValue = document.getElementById('quality-value');
+    const qualityFill = document.getElementById('quality-fill');
+    const maxDimensionSelect = document.getElementById('max-dimension');
+    const targetSizeInput = document.getElementById('target-size');
+
+    const form = document.getElementById('upload-form');
+    const convertBtn = document.getElementById('convert-btn');
+    const spinner = document.getElementById('spinner');
+    const convertLabel = document.getElementById('convert-label');
+    const errorBox = document.getElementById('error-box');
+
+    const result = document.getElementById('result');
+    const resultHeader = document.getElementById('result-header');
+    const resultStats = document.getElementById('result-stats');
+    const resultQualityLabel = document.getElementById('result-quality-label');
+    const resultQualityTrack = document.getElementById('result-quality-track');
+    const resultQualityFill = document.getElementById('result-quality-fill');
+    const floorNote = document.getElementById('floor-note');
+    const imagePreview = document.getElementById('image-preview');
+    const filenameInput = document.getElementById('filename-input');
+    const downloadLink = document.getElementById('download-link');
+    const resetBtn = document.getElementById('reset-btn');
+
+    let selectedFile = null;
+    let currentDims = { w: 0, h: 0 };
+    let mode = 'target';
+    let resultObjectUrl = null;
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.add('visible');
+    }
+
+    function clearError() {
+      errorBox.textContent = '';
+      errorBox.classList.remove('visible');
+    }
+
+    function hideAllSteps() {
+      cropSection.classList.remove('visible');
+      decisionSection.classList.remove('visible');
+      compressSection.classList.remove('visible');
+      result.classList.remove('visible');
+    }
+
+    function measureDims(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+        img.onerror = () => resolve({ w: 0, h: 0 });
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    async function setFile(file) {
+      clearError();
+      selectedFile = file;
+      currentDims = await measureDims(file);
+
+      const reader = new FileReader();
+      reader.onload = (e) => { previewThumb.src = e.target.result; };
+      reader.readAsDataURL(file);
+
+      previewName.textContent = file.name;
+      previewSize.textContent = formatSize(file.size) + (currentDims.w ? ` · ${currentDims.w}×${currentDims.h}` : '');
+      previewRow.classList.add('visible');
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      previewRow.classList.remove('visible');
+      hideAllSteps();
+      clearError();
+    }
+
+    async function handleNewFile(file) {
+      if (!file) return;
+      hideAllSteps();
+      await setFile(file);
+      openCropper();
+    }
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      handleNewFile(fileInput.files[0]);
+      fileInput.value = '';
+    });
+
+    ['dragenter', 'dragover'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      })
+    );
+    ['dragleave', 'drop'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      })
+    );
+    dropzone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) handleNewFile(file);
+    });
+
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    // ---- Step: crop ----
+    let cropRect = null;
+    let dragState = null;
+
+    function openCropper() {
+      const url = URL.createObjectURL(selectedFile);
+      cropImage.onload = () => {
+        cropSection.classList.add('visible');
+        const w = cropperWrap.clientWidth;
+        const h = cropperWrap.clientHeight;
+        const boxW = w * 0.8;
+        const boxH = h * 0.8;
+        cropRect = { x: (w - boxW) / 2, y: (h - boxH) / 2, w: boxW, h: boxH };
+        renderCropBox();
+      };
+      cropImage.src = url;
+    }
+
+    function renderCropBox() {
+      cropBox.style.left = cropRect.x + 'px';
+      cropBox.style.top = cropRect.y + 'px';
+      cropBox.style.width = cropRect.w + 'px';
+      cropBox.style.height = cropRect.h + 'px';
+    }
+
+    function clampCropRect() {
+      const w = cropperWrap.clientWidth;
+      const h = cropperWrap.clientHeight;
+      cropRect.w = Math.max(30, Math.min(cropRect.w, w));
+      cropRect.h = Math.max(30, Math.min(cropRect.h, h));
+      cropRect.x = Math.max(0, Math.min(cropRect.x, w - cropRect.w));
+      cropRect.y = Math.max(0, Math.min(cropRect.y, h - cropRect.h));
+    }
+
+    function pointerPos(e) {
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    cropBox.addEventListener('pointerdown', (e) => {
+      const handle = e.target.dataset.handle;
+      dragState = { handle: handle || 'move', start: pointerPos(e), rect: { ...cropRect } };
+      e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!dragState) return;
+      const pos = pointerPos(e);
+      const dx = pos.x - dragState.start.x;
+      const dy = pos.y - dragState.start.y;
+      const r = dragState.rect;
+
+      if (dragState.handle === 'move') {
+        cropRect.x = r.x + dx;
+        cropRect.y = r.y + dy;
+      } else {
+        let { x, y, w, h } = r;
+        if (dragState.handle.includes('n')) { y = r.y + dy; h = r.h - dy; }
+        if (dragState.handle.includes('s')) { h = r.h + dy; }
+        if (dragState.handle.includes('w')) { x = r.x + dx; w = r.w - dx; }
+        if (dragState.handle.includes('e')) { w = r.w + dx; }
+        cropRect = { x, y, w, h };
+      }
+      clampCropRect();
+      renderCropBox();
+    });
+
+    window.addEventListener('pointerup', () => { dragState = null; });
+
+    async function goToDecisionStep() {
+      cropSection.classList.remove('visible');
+      decisionSection.classList.add('visible');
+      sizeSummary.innerHTML = `<strong>${formatSize(selectedFile.size)}</strong>` + (currentDims.w ? ` &middot; <strong>${currentDims.w}&times;${currentDims.h}</strong>` : '');
+      reduceYesBtn.classList.remove('chosen');
+      reduceNoBtn.classList.remove('chosen');
+      compressSection.classList.remove('visible');
+    }
+
+    skipCropBtn.addEventListener('click', () => goToDecisionStep());
+
+    applyCropBtn.addEventListener('click', () => {
+      const wrapW = cropperWrap.clientWidth;
+      const wrapH = cropperWrap.clientHeight;
+      const scaleX = cropImage.naturalWidth / wrapW;
+      const scaleY = cropImage.naturalHeight / wrapH;
+
+      const sx = cropRect.x * scaleX;
+      const sy = cropRect.y * scaleY;
+      const sw = cropRect.w * scaleX;
+      const sh = cropRect.h * scaleY;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(sw));
+      canvas.height = Math.max(1, Math.round(sh));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(cropImage, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+      const outType = selectedFile.type && selectedFile.type.startsWith('image/') ? selectedFile.type : 'image/png';
+      canvas.toBlob(async (blob) => {
+        const croppedFile = new File([blob], selectedFile.name, { type: outType });
+        await setFile(croppedFile);
+        goToDecisionStep();
+      }, outType, 0.95);
+    });
+
+    // ---- Step: decision ----
+    function showClientSideResult() {
+      if (resultObjectUrl) URL.revokeObjectURL(resultObjectUrl);
+      resultObjectUrl = URL.createObjectURL(selectedFile);
+
+      resultHeader.textContent = '✓ Ready to download';
+      resultStats.innerHTML = `<strong>${formatSize(selectedFile.size)}</strong>` + (currentDims.w ? ` &middot; <strong>${currentDims.w}&times;${currentDims.h}</strong>` : '');
+      resultQualityLabel.textContent = '';
+      resultQualityTrack.style.display = 'none';
+      floorNote.classList.remove('visible');
+      imagePreview.src = resultObjectUrl;
+      downloadLink.href = resultObjectUrl;
+
+      const defaultName = selectedFile.name || 'image';
+      const dot = defaultName.lastIndexOf('.');
+      filenameInput.value = dot > 0 ? defaultName.slice(0, dot) : defaultName;
+      const ext = dot > 0 ? defaultName.slice(dot) : '';
+      downloadLink.setAttribute('download', filenameInput.value + ext);
+      filenameInput.dataset.ext = ext;
+
+      compressSection.classList.remove('visible');
+      result.classList.add('visible');
+    }
+
+    reduceNoBtn.addEventListener('click', () => {
+      reduceNoBtn.classList.add('chosen');
+      reduceYesBtn.classList.remove('chosen');
+      showClientSideResult();
+    });
+
+    reduceYesBtn.addEventListener('click', () => {
+      reduceYesBtn.classList.add('chosen');
+      reduceNoBtn.classList.remove('chosen');
+      result.classList.remove('visible');
+      compressSection.classList.add('visible');
+    });
+
+    // ---- Step: compress controls ----
+    function updateQualityFill() {
+      const pct = ((qualityInput.value - qualityInput.min) / (qualityInput.max - qualityInput.min)) * 100;
+      qualityFill.style.width = pct + '%';
+      qualityValue.textContent = qualityInput.value;
+    }
+    qualityInput.addEventListener('input', updateQualityFill);
+    updateQualityFill();
+
+    modeToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.mode-btn');
+      if (!btn) return;
+      mode = btn.dataset.mode;
+      modeToggle.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      qualityControls.classList.toggle('visible', mode === 'quality');
+      targetControls.classList.toggle('visible', mode === 'target');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedFile) return;
+
+      clearError();
+      convertBtn.disabled = true;
+      spinner.classList.add('visible');
+      convertLabel.textContent = mode === 'target' ? 'Finding best fit...' : 'Reducing...';
+
+      try {
+        const formData = new FormData();
+        formData.append('file_photo', selectedFile);
+        formData.append('max_dimension', maxDimensionSelect.value);
+        if (mode === 'target') {
+          const mb = parseFloat(targetSizeInput.value);
+          if (!mb || mb <= 0) throw new Error('Enter a target size greater than 0');
+          formData.append('target_size_mb', mb);
+        } else {
+          formData.append('quality', qualityInput.value);
+        }
+
+        const response = await fetch(form.action, { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Compression failed');
+        }
+
+        resultHeader.textContent = '✓ Reduced successfully';
+        imagePreview.src = data.image_url;
+        downloadLink.href = data.image_url;
+
+        const defaultName = (data.download_name || 'compressed.jpg');
+        const dot = defaultName.lastIndexOf('.');
+        filenameInput.value = dot > 0 ? defaultName.slice(0, dot) : defaultName;
+        const ext = dot > 0 ? defaultName.slice(dot) : '';
+        filenameInput.dataset.ext = ext;
+        downloadLink.setAttribute('download', defaultName);
+
+        const changeLabel = data.reduction_percent >= 0
+          ? `${data.reduction_percent}% smaller`
+          : `${Math.abs(data.reduction_percent)}% larger`;
+        resultStats.innerHTML = `<strong>${formatSize(data.original_size)}</strong> &rarr; <strong>${formatSize(data.compressed_size)}</strong> (${changeLabel}) &middot; <strong>${data.output_width}&times;${data.output_height}</strong>`;
+
+        resultQualityTrack.style.display = 'block';
+        resultQualityLabel.textContent = `Quality used: ${data.quality_used}%`;
+        resultQualityFill.style.width = data.quality_used + '%';
+        floorNote.classList.toggle('visible', !!data.quality_floor_hit);
+
+        compressSection.classList.remove('visible');
+        result.classList.add('visible');
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        convertBtn.disabled = false;
+        spinner.classList.remove('visible');
+        convertLabel.textContent = 'Reduce Size';
+      }
+    });
+
+    filenameInput.addEventListener('input', () => {
+      const ext = filenameInput.dataset.ext || '.jpg';
+      const name = filenameInput.value.trim() || 'image';
+      downloadLink.setAttribute('download', name + ext);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      clearFile();
+      imagePreview.src = '';
+    });
+  </script>
+</body>
+</html>
