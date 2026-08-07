@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Image to PDF Converter</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#6366f1">
+<link rel="icon" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Img2PDF">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
   :root {
     --bg-1: #0f172a;
@@ -64,22 +72,40 @@
   .dropzone-hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
   input[type="file"] { display: none; }
 
-  .preview-row {
+  .file-summary {
     display: none;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .file-summary.visible { display: block; }
+
+  .preview-list {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .preview-list.visible { display: flex; }
+  .preview-item {
+    display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 16px;
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: 10px;
   }
-  .preview-row.visible { display: flex; }
-  .preview-row img {
+  .preview-item img {
     width: 48px;
     height: 48px;
     object-fit: cover;
     border-radius: 6px;
     border: 1px solid var(--border);
+    background: #f1f5f9;
+    flex-shrink: 0;
   }
   .preview-info { flex: 1; min-width: 0; }
   .preview-name {
@@ -194,12 +220,47 @@
     color: var(--text);
   }
   button.secondary:hover { background: #e2e8f0; }
+
+  .header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .install-btn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .install-btn.visible { display: inline-flex; }
+  .install-btn:hover { background: #eef2ff; }
+  .install-btn svg { width: 14px; height: 14px; }
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>Image to PDF Converter</h1>
-    <p class="subtitle">Upload a photo and get back a downloadable PDF.</p>
+    <div class="header-row">
+      <div>
+        <h1>Image to PDF Converter</h1>
+        <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
+      </div>
+      <button type="button" class="install-btn" id="install-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12M12 15l-4-4M12 15l4-4"/>
+          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+        </svg>
+        Install app
+      </button>
+    </div>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -207,19 +268,13 @@
           <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
           <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
         </svg>
-        <div class="dropzone-text">Click to choose an image, or drag one here</div>
-        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF supported</div>
-        <input type="file" name="file_photo" id="file_photo" accept="image/*">
+        <div class="dropzone-text">Click to choose images, or drag them here</div>
+        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF &middot; select multiple to combine into one PDF</div>
+        <input type="file" name="files" id="file_photo" accept="image/*" multiple>
       </div>
 
-      <div class="preview-row" id="preview-row">
-        <img id="preview-thumb" src="" alt="">
-        <div class="preview-info">
-          <div class="preview-name" id="preview-name"></div>
-          <div class="preview-size" id="preview-size"></div>
-        </div>
-        <button type="button" class="remove-btn" id="remove-btn" aria-label="Remove file">&times;</button>
-      </div>
+      <div class="file-summary" id="file-summary"></div>
+      <div class="preview-list" id="preview-list"></div>
 
       <button type="submit" class="primary" id="convert-btn" disabled>
         <span class="spinner" id="spinner"></span>
@@ -230,7 +285,7 @@
     <div class="error" id="error-box"></div>
 
     <div class="result" id="result">
-      <div class="result-header">&#10003; Converted successfully</div>
+      <div class="result-header" id="result-header">&#10003; Converted successfully</div>
       <iframe class="pdf-preview" id="pdf-preview" title="PDF preview"></iframe>
       <div class="result-actions">
         <a class="download-btn" id="download-link" download>Download PDF</a>
@@ -242,20 +297,20 @@
   <script>
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('file_photo');
-    const previewRow = document.getElementById('preview-row');
-    const previewThumb = document.getElementById('preview-thumb');
-    const previewName = document.getElementById('preview-name');
-    const previewSize = document.getElementById('preview-size');
-    const removeBtn = document.getElementById('remove-btn');
+    const fileSummary = document.getElementById('file-summary');
+    const previewList = document.getElementById('preview-list');
     const form = document.getElementById('upload-form');
     const convertBtn = document.getElementById('convert-btn');
     const spinner = document.getElementById('spinner');
     const convertLabel = document.getElementById('convert-label');
     const errorBox = document.getElementById('error-box');
     const result = document.getElementById('result');
+    const resultHeader = document.getElementById('result-header');
     const pdfPreview = document.getElementById('pdf-preview');
     const downloadLink = document.getElementById('download-link');
     const resetBtn = document.getElementById('reset-btn');
+
+    let selectedFiles = [];
 
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -273,23 +328,70 @@
       errorBox.classList.remove('visible');
     }
 
-    function setFile(file) {
-      if (!file) return;
+    function renderPreviewList() {
+      previewList.innerHTML = '';
+
+      selectedFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+
+        const img = document.createElement('img');
+        img.alt = '';
+        const reader = new FileReader();
+        reader.onload = (e) => { img.src = e.target.result; };
+        reader.readAsDataURL(file);
+
+        const info = document.createElement('div');
+        info.className = 'preview-info';
+        const name = document.createElement('div');
+        name.className = 'preview-name';
+        name.textContent = file.name;
+        const size = document.createElement('div');
+        size.className = 'preview-size';
+        size.textContent = formatSize(file.size);
+        info.append(name, size);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-btn';
+        removeBtn.setAttribute('aria-label', 'Remove ' + file.name);
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectedFiles.splice(index, 1);
+          renderPreviewList();
+        });
+
+        item.append(img, info, removeBtn);
+        previewList.appendChild(item);
+      });
+
+      previewList.classList.toggle('visible', selectedFiles.length > 0);
+      convertBtn.disabled = selectedFiles.length === 0;
+
+      if (selectedFiles.length === 0) {
+        fileSummary.classList.remove('visible');
+      } else {
+        fileSummary.textContent = selectedFiles.length === 1
+          ? '1 image selected'
+          : `${selectedFiles.length} images selected — will merge into one PDF, in this order`;
+        fileSummary.classList.add('visible');
+      }
+    }
+
+    function addFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
       clearError();
       result.classList.remove('visible');
-
-      const reader = new FileReader();
-      reader.onload = (e) => { previewThumb.src = e.target.result; };
-      reader.readAsDataURL(file);
-
-      previewName.textContent = file.name;
-      previewSize.textContent = formatSize(file.size);
-      previewRow.classList.add('visible');
-      convertBtn.disabled = false;
+      selectedFiles = selectedFiles.concat(Array.from(fileList));
+      renderPreviewList();
     }
 
     dropzone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+    fileInput.addEventListener('change', () => {
+      addFiles(fileInput.files);
+      fileInput.value = '';
+    });
 
     ['dragenter', 'dragover'].forEach((evt) =>
       dropzone.addEventListener(evt, (e) => {
@@ -304,26 +406,12 @@
       })
     );
     dropzone.addEventListener('drop', (e) => {
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        fileInput.files = e.dataTransfer.files;
-        setFile(file);
-      }
-    });
-
-    removeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      fileInput.value = '';
-      previewRow.classList.remove('visible');
-      convertBtn.disabled = true;
-      result.classList.remove('visible');
-      clearError();
+      addFiles(e.dataTransfer.files);
     });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const file = fileInput.files[0];
-      if (!file) return;
+      if (selectedFiles.length === 0) return;
 
       clearError();
       convertBtn.disabled = true;
@@ -332,7 +420,7 @@
 
       try {
         const formData = new FormData();
-        formData.append('file_photo', file);
+        selectedFiles.forEach((file) => formData.append('files', file));
 
         const response = await fetch(form.action, { method: 'POST', body: formData });
         const data = await response.json();
@@ -344,23 +432,53 @@
         pdfPreview.src = data.pdf_url;
         downloadLink.href = data.pdf_url;
         downloadLink.setAttribute('download', data.download_name || 'converted.pdf');
+        resultHeader.textContent = data.page_count > 1
+          ? `✓ Converted ${data.page_count} images into one PDF`
+          : '✓ Converted successfully';
         result.classList.add('visible');
       } catch (err) {
         showError(err.message || 'Something went wrong. Please try again.');
       } finally {
-        convertBtn.disabled = false;
+        convertBtn.disabled = selectedFiles.length === 0;
         spinner.classList.remove('visible');
         convertLabel.textContent = 'Convert to PDF';
       }
     });
 
     resetBtn.addEventListener('click', () => {
+      selectedFiles = [];
       fileInput.value = '';
-      previewRow.classList.remove('visible');
-      convertBtn.disabled = true;
+      renderPreviewList();
       result.classList.remove('visible');
       pdfPreview.src = '';
       clearError();
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW registration failed:', err));
+      });
+    }
+
+    const installBtn = document.getElementById('install-btn');
+    let deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      installBtn.classList.add('visible');
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      installBtn.classList.remove('visible');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installBtn.classList.remove('visible');
     });
   </script>
 </body>
