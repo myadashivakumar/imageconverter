@@ -103,6 +103,17 @@
     text-overflow: ellipsis;
   }
   .preview-size { font-size: 12px; color: var(--muted); }
+  .icon-btn {
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .icon-btn:hover { color: var(--accent); }
+  .icon-btn svg { width: 18px; height: 18px; }
   .remove-btn {
     border: none;
     background: none;
@@ -114,10 +125,78 @@
   }
   .remove-btn:hover { color: var(--danger); }
 
-  .controls {
+  /* Cropper */
+  .cropper {
     display: none;
-    margin-top: 18px;
+    margin-top: 14px;
   }
+  .cropper.visible { display: block; }
+  .cropper-image-wrap {
+    position: relative;
+    max-width: 100%;
+    line-height: 0;
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    user-select: none;
+  }
+  .cropper-image-wrap img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .crop-box {
+    position: absolute;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.55);
+    cursor: move;
+    touch-action: none;
+  }
+  .crop-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    touch-action: none;
+  }
+  .crop-handle.nw { left: -8px; top: -8px; cursor: nwse-resize; }
+  .crop-handle.ne { right: -8px; top: -8px; cursor: nesw-resize; }
+  .crop-handle.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+  .crop-handle.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+  .crop-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .mode-toggle {
+    display: flex;
+    margin-top: 18px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .mode-btn {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .mode-btn.active {
+    background: #fff;
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  .controls { display: none; margin-top: 18px; }
   .controls.visible { display: block; }
   .control-row {
     display: flex;
@@ -131,7 +210,7 @@
     width: 100%;
     accent-color: var(--accent);
   }
-  select {
+  select, input[type="number"] {
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
@@ -142,6 +221,23 @@
     margin-top: 4px;
   }
   .control-group { margin-top: 16px; }
+  .control-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .quality-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .quality-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
+    width: 0%;
+    transition: width 0.2s ease;
+  }
 
   button.primary {
     width: 100%;
@@ -205,9 +301,15 @@
   .result-stats {
     font-size: 13px;
     color: var(--muted);
-    margin-bottom: 12px;
+    margin-bottom: 4px;
   }
   .result-stats strong { color: var(--text); }
+  .result-quality {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    margin-bottom: 12px;
+  }
   .image-preview {
     width: 100%;
     max-height: 320px;
@@ -249,7 +351,7 @@
   <div class="card">
     <a class="back-link" href="/">&larr; All tools</a>
     <h1>Reduce Image Size</h1>
-    <p class="subtitle">Shrink a photo's file size, with adjustable quality.</p>
+    <p class="subtitle">Crop, then shrink a photo's file size by quality or by target size.</p>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -268,16 +370,44 @@
           <div class="preview-name" id="preview-name"></div>
           <div class="preview-size" id="preview-size"></div>
         </div>
+        <button type="button" class="icon-btn" id="crop-btn" aria-label="Crop image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2v14a2 2 0 0 0 2 2h14"/>
+            <path d="M18 22V8a2 2 0 0 0-2-2H2"/>
+          </svg>
+        </button>
         <button type="button" class="remove-btn" id="remove-btn" aria-label="Remove file">&times;</button>
       </div>
 
-      <div class="controls" id="controls">
+      <div class="cropper" id="cropper">
+        <div class="cropper-image-wrap" id="cropper-wrap">
+          <img id="crop-image" src="" alt="Crop preview">
+          <div class="crop-box" id="crop-box">
+            <div class="crop-handle nw" data-handle="nw"></div>
+            <div class="crop-handle ne" data-handle="ne"></div>
+            <div class="crop-handle sw" data-handle="sw"></div>
+            <div class="crop-handle se" data-handle="se"></div>
+          </div>
+        </div>
+        <div class="crop-actions">
+          <button type="button" class="primary" id="apply-crop-btn" style="margin-top:0">Apply Crop</button>
+          <button type="button" class="secondary" id="cancel-crop-btn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="mode-toggle" id="mode-toggle">
+        <button type="button" class="mode-btn active" data-mode="quality">By Quality</button>
+        <button type="button" class="mode-btn" data-mode="target">By Target Size</button>
+      </div>
+
+      <div class="controls visible" id="quality-controls">
         <div class="control-group">
           <div class="control-row">
             <span class="control-label">Quality</span>
             <span class="control-value" id="quality-value">75</span>
           </div>
           <input type="range" id="quality" min="10" max="95" value="75" step="5">
+          <div class="quality-track"><div class="quality-fill" id="quality-fill"></div></div>
         </div>
         <div class="control-group">
           <span class="control-label">Max dimension</span>
@@ -292,6 +422,14 @@
         </div>
       </div>
 
+      <div class="controls" id="target-controls">
+        <div class="control-group">
+          <span class="control-label">Target file size (MB)</span>
+          <input type="number" id="target-size" min="0.01" step="0.05" value="0.5">
+          <div class="control-hint">We'll automatically find the quality (and, if needed, dimensions) that gets closest to this size without going over.</div>
+        </div>
+      </div>
+
       <button type="submit" class="primary" id="convert-btn" disabled>
         <span class="spinner" id="spinner"></span>
         <span id="convert-label">Reduce Size</span>
@@ -303,7 +441,9 @@
     <div class="result" id="result">
       <div class="result-header">&#10003; Reduced successfully</div>
       <div class="result-stats" id="result-stats"></div>
-      <img class="image-preview" id="image-preview" alt="Compressed preview">
+      <div class="result-quality" id="result-quality-label"></div>
+      <div class="quality-track"><div class="quality-fill" id="result-quality-fill"></div></div>
+      <img class="image-preview" id="image-preview" alt="Compressed preview" style="margin-top:14px">
       <div class="result-actions">
         <a class="download-btn" id="download-link" download>Download Image</a>
         <button type="button" class="secondary" id="reset-btn">Compress another</button>
@@ -319,10 +459,21 @@
     const previewName = document.getElementById('preview-name');
     const previewSize = document.getElementById('preview-size');
     const removeBtn = document.getElementById('remove-btn');
-    const controls = document.getElementById('controls');
+    const cropBtn = document.getElementById('crop-btn');
+    const cropper = document.getElementById('cropper');
+    const cropperWrap = document.getElementById('cropper-wrap');
+    const cropImage = document.getElementById('crop-image');
+    const cropBox = document.getElementById('crop-box');
+    const applyCropBtn = document.getElementById('apply-crop-btn');
+    const cancelCropBtn = document.getElementById('cancel-crop-btn');
+    const modeToggle = document.getElementById('mode-toggle');
+    const qualityControls = document.getElementById('quality-controls');
+    const targetControls = document.getElementById('target-controls');
     const qualityInput = document.getElementById('quality');
     const qualityValue = document.getElementById('quality-value');
+    const qualityFill = document.getElementById('quality-fill');
     const maxDimensionSelect = document.getElementById('max-dimension');
+    const targetSizeInput = document.getElementById('target-size');
     const form = document.getElementById('upload-form');
     const convertBtn = document.getElementById('convert-btn');
     const spinner = document.getElementById('spinner');
@@ -330,11 +481,14 @@
     const errorBox = document.getElementById('error-box');
     const result = document.getElementById('result');
     const resultStats = document.getElementById('result-stats');
+    const resultQualityLabel = document.getElementById('result-quality-label');
+    const resultQualityFill = document.getElementById('result-quality-fill');
     const imagePreview = document.getElementById('image-preview');
     const downloadLink = document.getElementById('download-link');
     const resetBtn = document.getElementById('reset-btn');
 
     let selectedFile = null;
+    let mode = 'quality';
 
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -352,11 +506,18 @@
       errorBox.classList.remove('visible');
     }
 
+    function updateQualityFill() {
+      const pct = ((qualityInput.value - qualityInput.min) / (qualityInput.max - qualityInput.min)) * 100;
+      qualityFill.style.width = pct + '%';
+      qualityValue.textContent = qualityInput.value;
+    }
+
     function setFile(file) {
       if (!file) return;
       clearError();
       result.classList.remove('visible');
       selectedFile = file;
+      closeCropper();
 
       const reader = new FileReader();
       reader.onload = (e) => { previewThumb.src = e.target.result; };
@@ -365,7 +526,6 @@
       previewName.textContent = file.name;
       previewSize.textContent = formatSize(file.size);
       previewRow.classList.add('visible');
-      controls.classList.add('visible');
       convertBtn.disabled = false;
     }
 
@@ -373,9 +533,9 @@
       selectedFile = null;
       fileInput.value = '';
       previewRow.classList.remove('visible');
-      controls.classList.remove('visible');
       convertBtn.disabled = true;
       result.classList.remove('visible');
+      closeCropper();
       clearError();
     }
 
@@ -407,8 +567,121 @@
       clearFile();
     });
 
-    qualityInput.addEventListener('input', () => {
-      qualityValue.textContent = qualityInput.value;
+    qualityInput.addEventListener('input', updateQualityFill);
+    updateQualityFill();
+
+    modeToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.mode-btn');
+      if (!btn) return;
+      mode = btn.dataset.mode;
+      modeToggle.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      qualityControls.classList.toggle('visible', mode === 'quality');
+      targetControls.classList.toggle('visible', mode === 'target');
+    });
+
+    // ---- Cropper ----
+    let cropRect = null; // { x, y, w, h } in wrap-pixel space
+    let dragState = null;
+
+    function closeCropper() {
+      cropper.classList.remove('visible');
+    }
+
+    cropBtn.addEventListener('click', () => {
+      if (!selectedFile) return;
+      const url = URL.createObjectURL(selectedFile);
+      cropImage.onload = () => {
+        cropper.classList.add('visible');
+        const w = cropperWrap.clientWidth;
+        const h = cropperWrap.clientHeight;
+        const boxW = w * 0.7;
+        const boxH = h * 0.7;
+        cropRect = { x: (w - boxW) / 2, y: (h - boxH) / 2, w: boxW, h: boxH };
+        renderCropBox();
+      };
+      cropImage.src = url;
+    });
+
+    function renderCropBox() {
+      cropBox.style.left = cropRect.x + 'px';
+      cropBox.style.top = cropRect.y + 'px';
+      cropBox.style.width = cropRect.w + 'px';
+      cropBox.style.height = cropRect.h + 'px';
+    }
+
+    function clampCropRect() {
+      const w = cropperWrap.clientWidth;
+      const h = cropperWrap.clientHeight;
+      cropRect.w = Math.max(30, Math.min(cropRect.w, w));
+      cropRect.h = Math.max(30, Math.min(cropRect.h, h));
+      cropRect.x = Math.max(0, Math.min(cropRect.x, w - cropRect.w));
+      cropRect.y = Math.max(0, Math.min(cropRect.y, h - cropRect.h));
+    }
+
+    function pointerPos(e) {
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    cropBox.addEventListener('pointerdown', (e) => {
+      const handle = e.target.dataset.handle;
+      dragState = {
+        handle: handle || 'move',
+        start: pointerPos(e),
+        rect: { ...cropRect },
+      };
+      e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!dragState) return;
+      const pos = pointerPos(e);
+      const dx = pos.x - dragState.start.x;
+      const dy = pos.y - dragState.start.y;
+      const r = dragState.rect;
+
+      if (dragState.handle === 'move') {
+        cropRect.x = r.x + dx;
+        cropRect.y = r.y + dy;
+      } else {
+        let { x, y, w, h } = r;
+        if (dragState.handle.includes('n')) { y = r.y + dy; h = r.h - dy; }
+        if (dragState.handle.includes('s')) { h = r.h + dy; }
+        if (dragState.handle.includes('w')) { x = r.x + dx; w = r.w - dx; }
+        if (dragState.handle.includes('e')) { w = r.w + dx; }
+        cropRect = { x, y, w, h };
+      }
+      clampCropRect();
+      renderCropBox();
+    });
+
+    window.addEventListener('pointerup', () => { dragState = null; });
+
+    cancelCropBtn.addEventListener('click', () => closeCropper());
+
+    applyCropBtn.addEventListener('click', () => {
+      const wrapW = cropperWrap.clientWidth;
+      const wrapH = cropperWrap.clientHeight;
+      const scaleX = cropImage.naturalWidth / wrapW;
+      const scaleY = cropImage.naturalHeight / wrapH;
+
+      const sx = cropRect.x * scaleX;
+      const sy = cropRect.y * scaleY;
+      const sw = cropRect.w * scaleX;
+      const sh = cropRect.h * scaleY;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(sw));
+      canvas.height = Math.max(1, Math.round(sh));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(cropImage, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+      const outType = selectedFile.type && selectedFile.type.startsWith('image/') ? selectedFile.type : 'image/png';
+      canvas.toBlob((blob) => {
+        const croppedFile = new File([blob], selectedFile.name, { type: outType });
+        closeCropper();
+        setFile(croppedFile);
+      }, outType, 0.95);
     });
 
     form.addEventListener('submit', async (e) => {
@@ -418,13 +691,19 @@
       clearError();
       convertBtn.disabled = true;
       spinner.classList.add('visible');
-      convertLabel.textContent = 'Reducing...';
+      convertLabel.textContent = mode === 'target' ? 'Finding best fit...' : 'Reducing...';
 
       try {
         const formData = new FormData();
         formData.append('file_photo', selectedFile);
-        formData.append('quality', qualityInput.value);
-        formData.append('max_dimension', maxDimensionSelect.value);
+        if (mode === 'target') {
+          const mb = parseFloat(targetSizeInput.value);
+          if (!mb || mb <= 0) throw new Error('Enter a target size greater than 0');
+          formData.append('target_size_mb', mb);
+        } else {
+          formData.append('quality', qualityInput.value);
+          formData.append('max_dimension', maxDimensionSelect.value);
+        }
 
         const response = await fetch(form.action, { method: 'POST', body: formData });
         const data = await response.json();
@@ -441,6 +720,9 @@
           ? `${data.reduction_percent}% smaller`
           : `${Math.abs(data.reduction_percent)}% larger`;
         resultStats.innerHTML = `<strong>${formatSize(data.original_size)}</strong> &rarr; <strong>${formatSize(data.compressed_size)}</strong> (${changeLabel})`;
+
+        resultQualityLabel.textContent = `Quality used: ${data.quality_used}%`;
+        resultQualityFill.style.width = data.quality_used + '%';
 
         result.classList.add('visible');
       } catch (err) {
