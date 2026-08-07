@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 
 import img2pdf
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -18,6 +18,11 @@ app = FastAPI(title="JPG to PDF Converter")
 app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
+
+
+@app.get("/", response_class=HTMLResponse)
+def landing(request: Request):
+    return templates.TemplateResponse(request, "landing.html", {})
 
 
 def normalize_image(contents: bytes, filename: str) -> bytes:
@@ -71,4 +76,73 @@ async def jpgtopdf_upload(files: list[UploadFile] = File(...)):
         "pdf_url": f"/media/{pdf_name}",
         "download_name": f"{download_stem}.pdf",
         "page_count": len(files),
+    }
+
+
+def compress_image(contents: bytes, quality: int, max_dimension: int) -> tuple[bytes, str]:
+    """Re-encode an image to shrink its file size.
+
+    Images with transparency are kept as palette-quantized PNGs (quality maps to
+    palette size); everything else is re-encoded as JPEG at the given quality.
+    """
+    try:
+        image = Image.open(io.BytesIO(contents))
+        image.load()
+    except UnidentifiedImageError:
+        raise HTTPException(status_code=400, detail="Unsupported or corrupt image file")
+
+    if max_dimension and max(image.size) > max_dimension:
+        image.thumbnail((max_dimension, max_dimension), Image.LANCZOS)
+
+    has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)
+    buffer = io.BytesIO()
+
+    if has_alpha:
+        colors = max(16, min(256, round(16 + (quality / 100) * 240)))
+        image = image.convert("RGBA").convert("P", palette=Image.ADAPTIVE, colors=colors)
+        image.save(buffer, format="PNG", optimize=True)
+        ext = "png"
+    else:
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        image.save(buffer, format="JPEG", quality=quality, optimize=True)
+        ext = "jpg"
+
+    return buffer.getvalue(), ext
+
+
+@app.get("/compress/upload/", response_class=HTMLResponse)
+def compress_form(request: Request):
+    return templates.TemplateResponse(request, "compress.html", {})
+
+
+@app.post("/compress/upload/")
+async def compress_upload(
+    file_photo: UploadFile = File(...),
+    quality: int = Form(75),
+    max_dimension: int = Form(0),
+):
+    contents = await file_photo.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    quality = max(10, min(95, quality))
+    max_dimension = max(0, max_dimension)
+
+    output_bytes, ext = compress_image(contents, quality, max_dimension)
+
+    stem = Path(file_photo.filename).stem or "image"
+    out_name = f"{stem}-compressed-{uuid.uuid4().hex[:8]}.{ext}"
+    (MEDIA_ROOT / out_name).write_bytes(output_bytes)
+
+    original_size = len(contents)
+    compressed_size = len(output_bytes)
+    reduction_percent = round((1 - compressed_size / original_size) * 100, 1) if original_size else 0
+
+    return {
+        "image_url": f"/media/{out_name}",
+        "download_name": f"{stem}-compressed.{ext}",
+        "original_size": original_size,
+        "compressed_size": compressed_size,
+        "reduction_percent": reduction_percent,
     }

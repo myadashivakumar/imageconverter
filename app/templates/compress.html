@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Image to PDF Converter</title>
+<title>Reduce Image Size</title>
 <style>
   :root {
     --bg-1: #0f172a;
@@ -36,6 +36,17 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
     padding: 32px;
   }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 16px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--accent); }
   h1 {
     margin: 0 0 4px;
     font-size: 22px;
@@ -64,40 +75,23 @@
   .dropzone-hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
   input[type="file"] { display: none; }
 
-  .file-summary {
+  .preview-row {
     display: none;
-    margin-top: 14px;
-    font-size: 12px;
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .file-summary.visible { display: block; }
-
-  .preview-list {
-    display: none;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 8px;
-    max-height: 220px;
-    overflow-y: auto;
-  }
-  .preview-list.visible { display: flex; }
-  .preview-item {
-    display: flex;
     align-items: center;
     gap: 12px;
+    margin-top: 16px;
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: 10px;
   }
-  .preview-item img {
+  .preview-row.visible { display: flex; }
+  .preview-row img {
     width: 48px;
     height: 48px;
     object-fit: cover;
     border-radius: 6px;
     border: 1px solid var(--border);
     background: #f1f5f9;
-    flex-shrink: 0;
   }
   .preview-info { flex: 1; min-width: 0; }
   .preview-name {
@@ -119,6 +113,35 @@
     padding: 4px;
   }
   .remove-btn:hover { color: var(--danger); }
+
+  .controls {
+    display: none;
+    margin-top: 18px;
+  }
+  .controls.visible { display: block; }
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .control-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .control-value { font-size: 13px; color: var(--muted); }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+    margin-top: 4px;
+  }
+  .control-group { margin-top: 16px; }
 
   button.primary {
     width: 100%;
@@ -174,17 +197,25 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
     color: var(--success);
     font-weight: 600;
     font-size: 14px;
   }
-  .pdf-preview {
+  .result-stats {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .result-stats strong { color: var(--text); }
+  .image-preview {
     width: 100%;
-    height: 360px;
+    max-height: 320px;
+    object-fit: contain;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: #f8fafc;
+    display: block;
   }
   .result-actions {
     display: flex;
@@ -212,25 +243,13 @@
     color: var(--text);
   }
   button.secondary:hover { background: #e2e8f0; }
-
-  .back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 16px;
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .back-link:hover { color: var(--accent); }
 </style>
 </head>
 <body>
   <div class="card">
     <a class="back-link" href="/">&larr; All tools</a>
-    <h1>Image to PDF Converter</h1>
-    <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
+    <h1>Reduce Image Size</h1>
+    <p class="subtitle">Shrink a photo's file size, with adjustable quality.</p>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -238,28 +257,56 @@
           <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
           <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
         </svg>
-        <div class="dropzone-text">Click to choose images, or drag them here</div>
-        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF &middot; select multiple to combine into one PDF</div>
-        <input type="file" name="files" id="file_photo" accept="image/*" multiple>
+        <div class="dropzone-text">Click to choose an image, or drag one here</div>
+        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF supported</div>
+        <input type="file" name="file_photo" id="file_photo" accept="image/*">
       </div>
 
-      <div class="file-summary" id="file-summary"></div>
-      <div class="preview-list" id="preview-list"></div>
+      <div class="preview-row" id="preview-row">
+        <img id="preview-thumb" src="" alt="">
+        <div class="preview-info">
+          <div class="preview-name" id="preview-name"></div>
+          <div class="preview-size" id="preview-size"></div>
+        </div>
+        <button type="button" class="remove-btn" id="remove-btn" aria-label="Remove file">&times;</button>
+      </div>
+
+      <div class="controls" id="controls">
+        <div class="control-group">
+          <div class="control-row">
+            <span class="control-label">Quality</span>
+            <span class="control-value" id="quality-value">75</span>
+          </div>
+          <input type="range" id="quality" min="10" max="95" value="75" step="5">
+        </div>
+        <div class="control-group">
+          <span class="control-label">Max dimension</span>
+          <select id="max-dimension">
+            <option value="0">No resize</option>
+            <option value="1920">1920px</option>
+            <option value="1280" selected>1280px</option>
+            <option value="1024">1024px</option>
+            <option value="800">800px</option>
+            <option value="640">640px</option>
+          </select>
+        </div>
+      </div>
 
       <button type="submit" class="primary" id="convert-btn" disabled>
         <span class="spinner" id="spinner"></span>
-        <span id="convert-label">Convert to PDF</span>
+        <span id="convert-label">Reduce Size</span>
       </button>
     </form>
 
     <div class="error" id="error-box"></div>
 
     <div class="result" id="result">
-      <div class="result-header" id="result-header">&#10003; Converted successfully</div>
-      <iframe class="pdf-preview" id="pdf-preview" title="PDF preview"></iframe>
+      <div class="result-header">&#10003; Reduced successfully</div>
+      <div class="result-stats" id="result-stats"></div>
+      <img class="image-preview" id="image-preview" alt="Compressed preview">
       <div class="result-actions">
-        <a class="download-btn" id="download-link" download>Download PDF</a>
-        <button type="button" class="secondary" id="reset-btn">Convert another</button>
+        <a class="download-btn" id="download-link" download>Download Image</a>
+        <button type="button" class="secondary" id="reset-btn">Compress another</button>
       </div>
     </div>
   </div>
@@ -267,20 +314,27 @@
   <script>
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('file_photo');
-    const fileSummary = document.getElementById('file-summary');
-    const previewList = document.getElementById('preview-list');
+    const previewRow = document.getElementById('preview-row');
+    const previewThumb = document.getElementById('preview-thumb');
+    const previewName = document.getElementById('preview-name');
+    const previewSize = document.getElementById('preview-size');
+    const removeBtn = document.getElementById('remove-btn');
+    const controls = document.getElementById('controls');
+    const qualityInput = document.getElementById('quality');
+    const qualityValue = document.getElementById('quality-value');
+    const maxDimensionSelect = document.getElementById('max-dimension');
     const form = document.getElementById('upload-form');
     const convertBtn = document.getElementById('convert-btn');
     const spinner = document.getElementById('spinner');
     const convertLabel = document.getElementById('convert-label');
     const errorBox = document.getElementById('error-box');
     const result = document.getElementById('result');
-    const resultHeader = document.getElementById('result-header');
-    const pdfPreview = document.getElementById('pdf-preview');
+    const resultStats = document.getElementById('result-stats');
+    const imagePreview = document.getElementById('image-preview');
     const downloadLink = document.getElementById('download-link');
     const resetBtn = document.getElementById('reset-btn');
 
-    let selectedFiles = [];
+    let selectedFile = null;
 
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -298,70 +352,35 @@
       errorBox.classList.remove('visible');
     }
 
-    function renderPreviewList() {
-      previewList.innerHTML = '';
-
-      selectedFiles.forEach((file, index) => {
-        const item = document.createElement('div');
-        item.className = 'preview-item';
-
-        const img = document.createElement('img');
-        img.alt = '';
-        const reader = new FileReader();
-        reader.onload = (e) => { img.src = e.target.result; };
-        reader.readAsDataURL(file);
-
-        const info = document.createElement('div');
-        info.className = 'preview-info';
-        const name = document.createElement('div');
-        name.className = 'preview-name';
-        name.textContent = file.name;
-        const size = document.createElement('div');
-        size.className = 'preview-size';
-        size.textContent = formatSize(file.size);
-        info.append(name, size);
-
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'remove-btn';
-        removeBtn.setAttribute('aria-label', 'Remove ' + file.name);
-        removeBtn.innerHTML = '&times;';
-        removeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          selectedFiles.splice(index, 1);
-          renderPreviewList();
-        });
-
-        item.append(img, info, removeBtn);
-        previewList.appendChild(item);
-      });
-
-      previewList.classList.toggle('visible', selectedFiles.length > 0);
-      convertBtn.disabled = selectedFiles.length === 0;
-
-      if (selectedFiles.length === 0) {
-        fileSummary.classList.remove('visible');
-      } else {
-        fileSummary.textContent = selectedFiles.length === 1
-          ? '1 image selected'
-          : `${selectedFiles.length} images selected — will merge into one PDF, in this order`;
-        fileSummary.classList.add('visible');
-      }
-    }
-
-    function addFiles(fileList) {
-      if (!fileList || fileList.length === 0) return;
+    function setFile(file) {
+      if (!file) return;
       clearError();
       result.classList.remove('visible');
-      selectedFiles = selectedFiles.concat(Array.from(fileList));
-      renderPreviewList();
+      selectedFile = file;
+
+      const reader = new FileReader();
+      reader.onload = (e) => { previewThumb.src = e.target.result; };
+      reader.readAsDataURL(file);
+
+      previewName.textContent = file.name;
+      previewSize.textContent = formatSize(file.size);
+      previewRow.classList.add('visible');
+      controls.classList.add('visible');
+      convertBtn.disabled = false;
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      previewRow.classList.remove('visible');
+      controls.classList.remove('visible');
+      convertBtn.disabled = true;
+      result.classList.remove('visible');
+      clearError();
     }
 
     dropzone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', () => {
-      addFiles(fileInput.files);
-      fileInput.value = '';
-    });
+    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
 
     ['dragenter', 'dragover'].forEach((evt) =>
       dropzone.addEventListener(evt, (e) => {
@@ -376,52 +395,66 @@
       })
     );
     dropzone.addEventListener('drop', (e) => {
-      addFiles(e.dataTransfer.files);
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        fileInput.files = e.dataTransfer.files;
+        setFile(file);
+      }
+    });
+
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    qualityInput.addEventListener('input', () => {
+      qualityValue.textContent = qualityInput.value;
     });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (selectedFiles.length === 0) return;
+      if (!selectedFile) return;
 
       clearError();
       convertBtn.disabled = true;
       spinner.classList.add('visible');
-      convertLabel.textContent = 'Converting...';
+      convertLabel.textContent = 'Reducing...';
 
       try {
         const formData = new FormData();
-        selectedFiles.forEach((file) => formData.append('files', file));
+        formData.append('file_photo', selectedFile);
+        formData.append('quality', qualityInput.value);
+        formData.append('max_dimension', maxDimensionSelect.value);
 
         const response = await fetch(form.action, { method: 'POST', body: formData });
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.detail || 'Conversion failed');
+          throw new Error(data.detail || 'Compression failed');
         }
 
-        pdfPreview.src = data.pdf_url;
-        downloadLink.href = data.pdf_url;
-        downloadLink.setAttribute('download', data.download_name || 'converted.pdf');
-        resultHeader.textContent = data.page_count > 1
-          ? `✓ Converted ${data.page_count} images into one PDF`
-          : '✓ Converted successfully';
+        imagePreview.src = data.image_url;
+        downloadLink.href = data.image_url;
+        downloadLink.setAttribute('download', data.download_name || 'compressed.jpg');
+
+        const changeLabel = data.reduction_percent >= 0
+          ? `${data.reduction_percent}% smaller`
+          : `${Math.abs(data.reduction_percent)}% larger`;
+        resultStats.innerHTML = `<strong>${formatSize(data.original_size)}</strong> &rarr; <strong>${formatSize(data.compressed_size)}</strong> (${changeLabel})`;
+
         result.classList.add('visible');
       } catch (err) {
         showError(err.message || 'Something went wrong. Please try again.');
       } finally {
-        convertBtn.disabled = selectedFiles.length === 0;
+        convertBtn.disabled = !selectedFile;
         spinner.classList.remove('visible');
-        convertLabel.textContent = 'Convert to PDF';
+        convertLabel.textContent = 'Reduce Size';
       }
     });
 
     resetBtn.addEventListener('click', () => {
-      selectedFiles = [];
-      fileInput.value = '';
-      renderPreviewList();
-      result.classList.remove('visible');
-      pdfPreview.src = '';
-      clearError();
+      clearFile();
+      imagePreview.src = '';
     });
   </script>
 </body>
