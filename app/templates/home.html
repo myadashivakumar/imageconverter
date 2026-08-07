@@ -4,14 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Image to PDF Converter</title>
-<link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#6366f1">
-<link rel="icon" href="/static/icons/icon-192.png">
-<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Img2PDF">
-<meta name="mobile-web-app-capable" content="yes">
 <style>
   :root {
     --bg-1: #0f172a;
@@ -220,47 +212,12 @@
     color: var(--text);
   }
   button.secondary:hover { background: #e2e8f0; }
-
-  .header-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .install-btn {
-    display: none;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .install-btn.visible { display: inline-flex; }
-  .install-btn:hover { background: #eef2ff; }
-  .install-btn svg { width: 14px; height: 14px; }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="header-row">
-      <div>
-        <h1>Image to PDF Converter</h1>
-        <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
-      </div>
-      <button type="button" class="install-btn" id="install-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v12M12 15l-4-4M12 15l4-4"/>
-          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-        </svg>
-        Install app
-      </button>
-    </div>
+    <h1>Image to PDF Converter</h1>
+    <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -452,33 +409,6 @@
       result.classList.remove('visible');
       pdfPreview.src = '';
       clearError();
-    });
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW registration failed:', err));
-      });
-    }
-
-    const installBtn = document.getElementById('install-btn');
-    let deferredInstallPrompt = null;
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      installBtn.classList.add('visible');
-    });
-
-    installBtn.addEventListener('click', async () => {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      deferredInstallPrompt = null;
-      installBtn.classList.remove('visible');
-    });
-
-    window.addEventListener('appinstalled', () => {
-      installBtn.classList.remove('visible');
     });
   </script>
 </body>

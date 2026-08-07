@@ -4,7 +4,7 @@ from pathlib import Path
 
 import img2pdf
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PIL import Image, UnidentifiedImageError
@@ -13,24 +13,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 APP_DIR = Path(__file__).resolve().parent
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_ROOT.mkdir(exist_ok=True)
-STATIC_DIR = APP_DIR / "static"
 
 app = FastAPI(title="JPG to PDF Converter")
 app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
-
-
-@app.get("/sw.js")
-def service_worker():
-    # Served from the root path (not /static/) so its default scope covers the whole app.
-    return FileResponse(STATIC_DIR / "sw.js", media_type="application/javascript")
-
-
-@app.get("/favicon.ico")
-def favicon():
-    return FileResponse(STATIC_DIR / "icons" / "icon-192.png", media_type="image/png")
 
 
 def normalize_image(contents: bytes, filename: str) -> bytes:
