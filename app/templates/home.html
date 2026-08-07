@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image to PDF Converter</title>
+<style>
+  :root {
+    --bg-1: #0f172a;
+    --bg-2: #1e293b;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --card: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --danger: #dc2626;
+    --success: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+  }
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    padding: 32px;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    color: var(--text);
+  }
+  p.subtitle {
+    margin: 0 0 24px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .dropzone:hover,
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: #eef2ff;
+  }
+  .dropzone svg { width: 36px; height: 36px; color: var(--accent); margin-bottom: 8px; }
+  .dropzone-text { color: var(--text); font-weight: 600; font-size: 14px; }
+  .dropzone-hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  input[type="file"] { display: none; }
+
+  .preview-row {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .preview-row.visible { display: flex; }
+  .preview-row img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .preview-info { flex: 1; min-width: 0; }
+  .preview-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-size { font-size: 12px; color: var(--muted); }
+  .remove-btn {
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+  }
+  .remove-btn:hover { color: var(--danger); }
+
+  button.primary {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.15s;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.visible { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error {
+    display: none;
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: var(--danger);
+    font-size: 13px;
+  }
+  .error.visible { display: block; }
+
+  .result {
+    display: none;
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+  .result.visible { display: block; }
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--success);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .pdf-preview {
+    width: 100%;
+    height: 360px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  a.download-btn, button.secondary {
+    flex: 1;
+    text-align: center;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+  }
+  a.download-btn {
+    background: var(--success);
+    color: #fff;
+  }
+  a.download-btn:hover { opacity: 0.9; }
+  button.secondary {
+    background: #f1f5f9;
+    color: var(--text);
+  }
+  button.secondary:hover { background: #e2e8f0; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Image to PDF Converter</h1>
+    <p class="subtitle">Upload a photo and get back a downloadable PDF.</p>
+
+    <form id="upload-form">
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+          <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+        </svg>
+        <div class="dropzone-text">Click to choose an image, or drag one here</div>
+        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF supported</div>
+        <input type="file" name="file_photo" id="file_photo" accept="image/*">
+      </div>
+
+      <div class="preview-row" id="preview-row">
+        <img id="preview-thumb" src="" alt="">
+        <div class="preview-info">
+          <div class="preview-name" id="preview-name"></div>
+          <div class="preview-size" id="preview-size"></div>
+        </div>
+        <button type="button" class="remove-btn" id="remove-btn" aria-label="Remove file">&times;</button>
+      </div>
+
+      <button type="submit" class="primary" id="convert-btn" disabled>
+        <span class="spinner" id="spinner"></span>
+        <span id="convert-label">Convert to PDF</span>
+      </button>
+    </form>
+
+    <div class="error" id="error-box"></div>
+
+    <div class="result" id="result">
+      <div class="result-header">&#10003; Converted successfully</div>
+      <iframe class="pdf-preview" id="pdf-preview" title="PDF preview"></iframe>
+      <div class="result-actions">
+        <a class="download-btn" id="download-link" download>Download PDF</a>
+        <button type="button" class="secondary" id="reset-btn">Convert another</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file_photo');
+    const previewRow = document.getElementById('preview-row');
+    const previewThumb = document.getElementById('preview-thumb');
+    const previewName = document.getElementById('preview-name');
+    const previewSize = document.getElementById('preview-size');
+    const removeBtn = document.getElementById('remove-btn');
+    const form = document.getElementById('upload-form');
+    const convertBtn = document.getElementById('convert-btn');
+    const spinner = document.getElementById('spinner');
+    const convertLabel = document.getElementById('convert-label');
+    const errorBox = document.getElementById('error-box');
+    const result = document.getElementById('result');
+    const pdfPreview = document.getElementById('pdf-preview');
+    const downloadLink = document.getElementById('download-link');
+    const resetBtn = document.getElementById('reset-btn');
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.add('visible');
+    }
+
+    function clearError() {
+      errorBox.textContent = '';
+      errorBox.classList.remove('visible');
+    }
+
+    function setFile(file) {
+      if (!file) return;
+      clearError();
+      result.classList.remove('visible');
+
+      const reader = new FileReader();
+      reader.onload = (e) => { previewThumb.src = e.target.result; };
+      reader.readAsDataURL(file);
+
+      previewName.textContent = file.name;
+      previewSize.textContent = formatSize(file.size);
+      previewRow.classList.add('visible');
+      convertBtn.disabled = false;
+    }
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+    ['dragenter', 'dragover'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      })
+    );
+    ['dragleave', 'drop'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      })
+    );
+    dropzone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        fileInput.files = e.dataTransfer.files;
+        setFile(file);
+      }
+    });
+
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInput.value = '';
+      previewRow.classList.remove('visible');
+      convertBtn.disabled = true;
+      result.classList.remove('visible');
+      clearError();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      clearError();
+      convertBtn.disabled = true;
+      spinner.classList.add('visible');
+      convertLabel.textContent = 'Converting...';
+
+      try {
+        const formData = new FormData();
+        formData.append('file_photo', file);
+
+        const response = await fetch(form.action, { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Conversion failed');
+        }
+
+        pdfPreview.src = data.pdf_url;
+        downloadLink.href = data.pdf_url;
+        downloadLink.setAttribute('download', data.download_name || 'converted.pdf');
+        result.classList.add('visible');
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        convertBtn.disabled = false;
+        spinner.classList.remove('visible');
+        convertLabel.textContent = 'Convert to PDF';
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      previewRow.classList.remove('visible');
+      convertBtn.disabled = true;
+      result.classList.remove('visible');
+      pdfPreview.src = '';
+      clearError();
+    });
+  </script>
+</body>
+</html>
