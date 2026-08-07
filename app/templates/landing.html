@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Image Tools</title>
+<title>Image &amp; Document Tools</title>
 <style>
   :root {
     --bg-1: #0f172a;
@@ -28,7 +28,7 @@
   }
   .page {
     width: 100%;
-    max-width: 720px;
+    max-width: 820px;
   }
   h1 {
     margin: 0 0 4px;
@@ -44,10 +44,13 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
   }
-  @media (max-width: 600px) {
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
     .grid { grid-template-columns: 1fr; }
   }
   a.tool-card {
@@ -104,7 +107,7 @@
 </head>
 <body>
   <div class="page">
-    <h1>Image Tools</h1>
+    <h1>Image &amp; Document Tools</h1>
     <p class="subtitle">Choose a tool to get started.</p>
 
     <div class="grid">
@@ -132,6 +135,54 @@
         </div>
         <div class="tool-title">Reduce Image Size</div>
         <div class="tool-desc">Shrink a JPG or PNG's file size with adjustable quality, while keeping it looking good.</div>
+        <div class="tool-cta">
+          Open tool
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </a>
+
+      <a class="tool-card" href="/mergepdf/upload/">
+        <div class="tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/>
+            <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/>
+            <path d="M12 8v8M9 11l3-3 3 3"/>
+          </svg>
+        </div>
+        <div class="tool-title">Merge PDFs</div>
+        <div class="tool-desc">Combine two or more PDFs, in whatever order you like, into a single file.</div>
+        <div class="tool-cta">
+          Open tool
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </a>
+
+      <a class="tool-card" href="/wordtopdf/upload/">
+        <div class="tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+            <path d="M12 11v6M9 14l3 3 3-3"/>
+          </svg>
+        </div>
+        <div class="tool-title">Word to PDF</div>
+        <div class="tool-desc">Convert one or more .docx files into a single PDF, with headings and tables intact.</div>
+        <div class="tool-cta">
+          Open tool
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </a>
+
+      <a class="tool-card" href="/pdftoword/upload/">
+        <div class="tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+            <path d="M12 17v-6M9 14l3-3 3 3"/>
+          </svg>
+        </div>
+        <div class="tool-title">PDF to Word</div>
+        <div class="tool-desc">Turn PDFs back into editable Word documents. Multiple files come back as a ZIP.</div>
         <div class="tool-cta">
           Open tool
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>

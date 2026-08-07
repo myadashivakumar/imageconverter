@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Image to PDF Converter</title>
+<title>PDF to Word</title>
 <style>
   :root {
     --bg-1: #0f172a;
@@ -113,15 +113,18 @@
     align-items: center;
     justify-content: center;
   }
-  .preview-item img {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #f1f5f9;
+  .pdf-icon {
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
+    border-radius: 6px;
+    background: #fee2e2;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .pdf-icon svg { width: 20px; height: 20px; }
   .preview-info { flex: 1; min-width: 0; }
   .preview-name {
     font-size: 13px;
@@ -202,13 +205,29 @@
     font-weight: 600;
     font-size: 14px;
   }
-  .pdf-preview {
-    width: 100%;
-    height: 360px;
+  .result-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: #f8fafc;
   }
+  .result-card .doc-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: #dbeafe;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .result-card .doc-icon svg { width: 24px; height: 24px; }
+  .result-card-name { font-weight: 600; color: var(--text); font-size: 14px; }
+  .result-card-size { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .result-actions {
     display: flex;
     gap: 10px;
@@ -238,7 +257,7 @@
 
   .control-group { margin-top: 16px; }
   .control-label { font-size: 13px; font-weight: 600; color: var(--text); display: block; margin-bottom: 4px; }
-  select, input[type="text"] {
+  input[type="text"] {
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
@@ -247,14 +266,6 @@
     color: var(--text);
     background: #fff;
   }
-  .control-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-
-  .result-stats {
-    font-size: 13px;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
-  .result-stats strong { color: var(--text); }
   .filename-group { margin-bottom: 14px; }
 
   .back-link {
@@ -273,8 +284,8 @@
 <body>
   <div class="card">
     <a class="back-link" href="/">&larr; All tools</a>
-    <h1>Image to PDF Converter</h1>
-    <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
+    <h1>PDF to Word</h1>
+    <p class="subtitle">Convert PDFs into editable Word documents. Select more than one and you'll get a ZIP back.</p>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -282,27 +293,17 @@
           <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
           <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
         </svg>
-        <div class="dropzone-text">Click to choose images, or drag them here</div>
-        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF &middot; select multiple to combine into one PDF</div>
-        <input type="file" name="files" id="file_photo" accept="image/*" multiple>
+        <div class="dropzone-text">Click to choose PDFs, or drag them here</div>
+        <div class="dropzone-hint">Select multiple to convert them all at once</div>
+        <input type="file" name="files" id="file_input" accept="application/pdf,.pdf" multiple>
       </div>
 
       <div class="file-summary" id="file-summary"></div>
       <div class="preview-list" id="preview-list"></div>
 
-      <div class="control-group">
-        <span class="control-label">Page size</span>
-        <select id="page-size">
-          <option value="fit" selected>Fit to image (recommended)</option>
-          <option value="a4">A4</option>
-          <option value="letter">US Letter</option>
-          <option value="legal">Legal</option>
-        </select>
-      </div>
-
       <button type="submit" class="primary" id="convert-btn" disabled>
         <span class="spinner" id="spinner"></span>
-        <span id="convert-label">Convert to PDF</span>
+        <span id="convert-label">Convert to Word</span>
       </button>
     </form>
 
@@ -310,14 +311,21 @@
 
     <div class="result" id="result">
       <div class="result-header" id="result-header">&#10003; Converted successfully</div>
-      <div class="result-stats" id="result-stats"></div>
-      <iframe class="pdf-preview" id="pdf-preview" title="PDF preview"></iframe>
+      <div class="result-card">
+        <div class="doc-icon" id="result-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <div>
+          <div class="result-card-name" id="result-card-name">document.docx</div>
+          <div class="result-card-size" id="result-card-size"></div>
+        </div>
+      </div>
       <div class="control-group filename-group">
         <span class="control-label">File name</span>
         <input type="text" id="filename-input" spellcheck="false">
       </div>
       <div class="result-actions">
-        <a class="download-btn" id="download-link" download>Download PDF</a>
+        <a class="download-btn" id="download-link" download>Download</a>
         <button type="button" class="secondary" id="reset-btn">Convert another</button>
       </div>
     </div>
@@ -325,10 +333,9 @@
 
   <script>
     const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file_photo');
+    const fileInput = document.getElementById('file_input');
     const fileSummary = document.getElementById('file-summary');
     const previewList = document.getElementById('preview-list');
-    const pageSizeSelect = document.getElementById('page-size');
     const form = document.getElementById('upload-form');
     const convertBtn = document.getElementById('convert-btn');
     const spinner = document.getElementById('spinner');
@@ -336,14 +343,15 @@
     const errorBox = document.getElementById('error-box');
     const result = document.getElementById('result');
     const resultHeader = document.getElementById('result-header');
-    const resultStats = document.getElementById('result-stats');
-    const pdfPreview = document.getElementById('pdf-preview');
+    const resultCardName = document.getElementById('result-card-name');
+    const resultCardSize = document.getElementById('result-card-size');
     const filenameInput = document.getElementById('filename-input');
     const downloadLink = document.getElementById('download-link');
     const resetBtn = document.getElementById('reset-btn');
 
     let selectedFiles = [];
     let dragFromIndex = null;
+    let resultExt = '.docx';
 
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -379,11 +387,9 @@
         badge.className = 'preview-index';
         badge.textContent = index + 1;
 
-        const img = document.createElement('img');
-        img.alt = '';
-        const reader = new FileReader();
-        reader.onload = (e) => { img.src = e.target.result; };
-        reader.readAsDataURL(file);
+        const icon = document.createElement('div');
+        icon.className = 'pdf-icon';
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 
         const info = document.createElement('div');
         info.className = 'preview-info';
@@ -406,7 +412,7 @@
           renderPreviewList();
         });
 
-        item.append(handle, badge, img, info, removeBtn);
+        item.append(handle, badge, icon, info, removeBtn);
         previewList.appendChild(item);
       });
 
@@ -415,10 +421,11 @@
 
       if (selectedFiles.length === 0) {
         fileSummary.classList.remove('visible');
+      } else if (selectedFiles.length === 1) {
+        fileSummary.textContent = '1 PDF selected';
+        fileSummary.classList.add('visible');
       } else {
-        fileSummary.textContent = selectedFiles.length === 1
-          ? '1 image selected'
-          : `${selectedFiles.length} images selected — drag to reorder, will merge into one PDF in this order`;
+        fileSummary.textContent = `${selectedFiles.length} PDFs selected — drag to reorder; you'll get a ZIP with one .docx per file`;
         fileSummary.classList.add('visible');
       }
     }
@@ -496,7 +503,6 @@
       try {
         const formData = new FormData();
         selectedFiles.forEach((file) => formData.append('files', file));
-        formData.append('page_size', pageSizeSelect.value);
 
         const response = await fetch(form.action, { method: 'POST', body: formData });
         const data = await response.json();
@@ -505,28 +511,34 @@
           throw new Error(data.detail || 'Conversion failed');
         }
 
-        pdfPreview.src = data.pdf_url;
-        downloadLink.href = data.pdf_url;
-        const defaultName = data.download_name || 'converted.pdf';
-        filenameInput.value = defaultName.replace(/\.pdf$/i, '');
+        downloadLink.href = data.file_url;
+        const defaultName = data.download_name || (data.is_zip ? 'documents.zip' : 'document.docx');
+        resultExt = data.is_zip ? '.zip' : '.docx';
+        const dot = defaultName.lastIndexOf('.');
+        filenameInput.value = dot > 0 ? defaultName.slice(0, dot) : defaultName;
         downloadLink.setAttribute('download', defaultName);
-        resultHeader.textContent = data.page_count > 1
-          ? `✓ Converted ${data.page_count} images into one PDF`
+
+        resultHeader.textContent = data.is_zip
+          ? `✓ Converted ${data.file_count} PDFs to Word`
           : '✓ Converted successfully';
-        resultStats.innerHTML = `<strong>${data.page_count}</strong> page${data.page_count > 1 ? 's' : ''} &middot; <strong>${formatSize(data.output_size)}</strong>`;
+        resultCardName.textContent = defaultName;
+        resultCardSize.textContent = formatSize(data.output_size) + (data.is_zip ? ` · ${data.file_count} files` : '');
+
         result.classList.add('visible');
       } catch (err) {
         showError(err.message || 'Something went wrong. Please try again.');
       } finally {
         convertBtn.disabled = selectedFiles.length === 0;
         spinner.classList.remove('visible');
-        convertLabel.textContent = 'Convert to PDF';
+        convertLabel.textContent = 'Convert to Word';
       }
     });
 
     filenameInput.addEventListener('input', () => {
-      const name = filenameInput.value.trim() || 'converted';
-      downloadLink.setAttribute('download', name.replace(/\.pdf$/i, '') + '.pdf');
+      const name = filenameInput.value.trim() || 'document';
+      const fullName = name + resultExt;
+      downloadLink.setAttribute('download', fullName);
+      resultCardName.textContent = fullName;
     });
 
     resetBtn.addEventListener('click', () => {
@@ -534,7 +546,6 @@
       fileInput.value = '';
       renderPreviewList();
       result.classList.remove('visible');
-      pdfPreview.src = '';
       clearError();
     });
   </script>

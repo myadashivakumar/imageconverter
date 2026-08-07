@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Image to PDF Converter</title>
+<title>Merge PDFs</title>
 <style>
   :root {
     --bg-1: #0f172a;
@@ -113,15 +113,18 @@
     align-items: center;
     justify-content: center;
   }
-  .preview-item img {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #f1f5f9;
+  .pdf-icon {
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
+    border-radius: 6px;
+    background: #fee2e2;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .pdf-icon svg { width: 20px; height: 20px; }
   .preview-info { flex: 1; min-width: 0; }
   .preview-name {
     font-size: 13px;
@@ -273,8 +276,8 @@
 <body>
   <div class="card">
     <a class="back-link" href="/">&larr; All tools</a>
-    <h1>Image to PDF Converter</h1>
-    <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
+    <h1>Merge PDFs</h1>
+    <p class="subtitle">Combine two or more PDFs into a single downloadable file.</p>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -282,9 +285,9 @@
           <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
           <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
         </svg>
-        <div class="dropzone-text">Click to choose images, or drag them here</div>
-        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF &middot; select multiple to combine into one PDF</div>
-        <input type="file" name="files" id="file_photo" accept="image/*" multiple>
+        <div class="dropzone-text">Click to choose PDFs, or drag them here</div>
+        <div class="dropzone-hint">Select at least 2 PDFs to merge</div>
+        <input type="file" name="files" id="file_input" accept="application/pdf,.pdf" multiple>
       </div>
 
       <div class="file-summary" id="file-summary"></div>
@@ -293,23 +296,24 @@
       <div class="control-group">
         <span class="control-label">Page size</span>
         <select id="page-size">
-          <option value="fit" selected>Fit to image (recommended)</option>
+          <option value="original" selected>Keep original sizes (recommended)</option>
           <option value="a4">A4</option>
           <option value="letter">US Letter</option>
           <option value="legal">Legal</option>
         </select>
+        <div class="control-hint">If you pick a fixed size, each page is scaled to fit, centered.</div>
       </div>
 
       <button type="submit" class="primary" id="convert-btn" disabled>
         <span class="spinner" id="spinner"></span>
-        <span id="convert-label">Convert to PDF</span>
+        <span id="convert-label">Merge PDFs</span>
       </button>
     </form>
 
     <div class="error" id="error-box"></div>
 
     <div class="result" id="result">
-      <div class="result-header" id="result-header">&#10003; Converted successfully</div>
+      <div class="result-header" id="result-header">&#10003; Merged successfully</div>
       <div class="result-stats" id="result-stats"></div>
       <iframe class="pdf-preview" id="pdf-preview" title="PDF preview"></iframe>
       <div class="control-group filename-group">
@@ -318,14 +322,14 @@
       </div>
       <div class="result-actions">
         <a class="download-btn" id="download-link" download>Download PDF</a>
-        <button type="button" class="secondary" id="reset-btn">Convert another</button>
+        <button type="button" class="secondary" id="reset-btn">Merge another</button>
       </div>
     </div>
   </div>
 
   <script>
     const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file_photo');
+    const fileInput = document.getElementById('file_input');
     const fileSummary = document.getElementById('file-summary');
     const previewList = document.getElementById('preview-list');
     const pageSizeSelect = document.getElementById('page-size');
@@ -379,11 +383,9 @@
         badge.className = 'preview-index';
         badge.textContent = index + 1;
 
-        const img = document.createElement('img');
-        img.alt = '';
-        const reader = new FileReader();
-        reader.onload = (e) => { img.src = e.target.result; };
-        reader.readAsDataURL(file);
+        const icon = document.createElement('div');
+        icon.className = 'pdf-icon';
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 
         const info = document.createElement('div');
         info.className = 'preview-info';
@@ -406,19 +408,20 @@
           renderPreviewList();
         });
 
-        item.append(handle, badge, img, info, removeBtn);
+        item.append(handle, badge, icon, info, removeBtn);
         previewList.appendChild(item);
       });
 
       previewList.classList.toggle('visible', selectedFiles.length > 0);
-      convertBtn.disabled = selectedFiles.length === 0;
+      convertBtn.disabled = selectedFiles.length < 2;
 
       if (selectedFiles.length === 0) {
         fileSummary.classList.remove('visible');
+      } else if (selectedFiles.length === 1) {
+        fileSummary.textContent = '1 PDF selected — add at least one more to merge';
+        fileSummary.classList.add('visible');
       } else {
-        fileSummary.textContent = selectedFiles.length === 1
-          ? '1 image selected'
-          : `${selectedFiles.length} images selected — drag to reorder, will merge into one PDF in this order`;
+        fileSummary.textContent = `${selectedFiles.length} PDFs selected — drag to reorder, will merge in this order`;
         fileSummary.classList.add('visible');
       }
     }
@@ -486,12 +489,12 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (selectedFiles.length === 0) return;
+      if (selectedFiles.length < 2) return;
 
       clearError();
       convertBtn.disabled = true;
       spinner.classList.add('visible');
-      convertLabel.textContent = 'Converting...';
+      convertLabel.textContent = 'Merging...';
 
       try {
         const formData = new FormData();
@@ -502,30 +505,28 @@
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.detail || 'Conversion failed');
+          throw new Error(data.detail || 'Merge failed');
         }
 
         pdfPreview.src = data.pdf_url;
         downloadLink.href = data.pdf_url;
-        const defaultName = data.download_name || 'converted.pdf';
+        const defaultName = data.download_name || 'merged.pdf';
         filenameInput.value = defaultName.replace(/\.pdf$/i, '');
         downloadLink.setAttribute('download', defaultName);
-        resultHeader.textContent = data.page_count > 1
-          ? `✓ Converted ${data.page_count} images into one PDF`
-          : '✓ Converted successfully';
+        resultHeader.textContent = '✓ Merged successfully';
         resultStats.innerHTML = `<strong>${data.page_count}</strong> page${data.page_count > 1 ? 's' : ''} &middot; <strong>${formatSize(data.output_size)}</strong>`;
         result.classList.add('visible');
       } catch (err) {
         showError(err.message || 'Something went wrong. Please try again.');
       } finally {
-        convertBtn.disabled = selectedFiles.length === 0;
+        convertBtn.disabled = selectedFiles.length < 2;
         spinner.classList.remove('visible');
-        convertLabel.textContent = 'Convert to PDF';
+        convertLabel.textContent = 'Merge PDFs';
       }
     });
 
     filenameInput.addEventListener('input', () => {
-      const name = filenameInput.value.trim() || 'converted';
+      const name = filenameInput.value.trim() || 'merged';
       downloadLink.setAttribute('download', name.replace(/\.pdf$/i, '') + '.pdf');
     });
 

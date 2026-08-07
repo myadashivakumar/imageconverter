@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Image to PDF Converter</title>
+<title>Word to PDF</title>
 <style>
   :root {
     --bg-1: #0f172a;
@@ -113,15 +113,18 @@
     align-items: center;
     justify-content: center;
   }
-  .preview-item img {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #f1f5f9;
+  .doc-icon {
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
+    border-radius: 6px;
+    background: #dbeafe;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .doc-icon svg { width: 20px; height: 20px; }
   .preview-info { flex: 1; min-width: 0; }
   .preview-name {
     font-size: 13px;
@@ -273,8 +276,8 @@
 <body>
   <div class="card">
     <a class="back-link" href="/">&larr; All tools</a>
-    <h1>Image to PDF Converter</h1>
-    <p class="subtitle">Upload one or more photos and get back a downloadable PDF.</p>
+    <h1>Word to PDF</h1>
+    <p class="subtitle">Convert one or more Word documents into a single PDF. Text, headings, and tables carry over &mdash; images and complex layouts don't.</p>
 
     <form id="upload-form">
       <div class="dropzone" id="dropzone">
@@ -282,9 +285,9 @@
           <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
           <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
         </svg>
-        <div class="dropzone-text">Click to choose images, or drag them here</div>
-        <div class="dropzone-hint">JPG, PNG, GIF, BMP, WEBP, TIFF &middot; select multiple to combine into one PDF</div>
-        <input type="file" name="files" id="file_photo" accept="image/*" multiple>
+        <div class="dropzone-text">Click to choose Word documents, or drag them here</div>
+        <div class="dropzone-hint">.docx &middot; select multiple to combine into one PDF</div>
+        <input type="file" name="files" id="file_input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
       </div>
 
       <div class="file-summary" id="file-summary"></div>
@@ -293,8 +296,7 @@
       <div class="control-group">
         <span class="control-label">Page size</span>
         <select id="page-size">
-          <option value="fit" selected>Fit to image (recommended)</option>
-          <option value="a4">A4</option>
+          <option value="a4" selected>A4 (recommended)</option>
           <option value="letter">US Letter</option>
           <option value="legal">Legal</option>
         </select>
@@ -325,7 +327,7 @@
 
   <script>
     const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file_photo');
+    const fileInput = document.getElementById('file_input');
     const fileSummary = document.getElementById('file-summary');
     const previewList = document.getElementById('preview-list');
     const pageSizeSelect = document.getElementById('page-size');
@@ -379,11 +381,9 @@
         badge.className = 'preview-index';
         badge.textContent = index + 1;
 
-        const img = document.createElement('img');
-        img.alt = '';
-        const reader = new FileReader();
-        reader.onload = (e) => { img.src = e.target.result; };
-        reader.readAsDataURL(file);
+        const icon = document.createElement('div');
+        icon.className = 'doc-icon';
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 
         const info = document.createElement('div');
         info.className = 'preview-info';
@@ -406,7 +406,7 @@
           renderPreviewList();
         });
 
-        item.append(handle, badge, img, info, removeBtn);
+        item.append(handle, badge, icon, info, removeBtn);
         previewList.appendChild(item);
       });
 
@@ -415,10 +415,11 @@
 
       if (selectedFiles.length === 0) {
         fileSummary.classList.remove('visible');
+      } else if (selectedFiles.length === 1) {
+        fileSummary.textContent = '1 document selected';
+        fileSummary.classList.add('visible');
       } else {
-        fileSummary.textContent = selectedFiles.length === 1
-          ? '1 image selected'
-          : `${selectedFiles.length} images selected — drag to reorder, will merge into one PDF in this order`;
+        fileSummary.textContent = `${selectedFiles.length} documents selected — drag to reorder, will combine in this order`;
         fileSummary.classList.add('visible');
       }
     }
@@ -511,9 +512,9 @@
         filenameInput.value = defaultName.replace(/\.pdf$/i, '');
         downloadLink.setAttribute('download', defaultName);
         resultHeader.textContent = data.page_count > 1
-          ? `✓ Converted ${data.page_count} images into one PDF`
+          ? `✓ Converted ${data.page_count} documents into one PDF`
           : '✓ Converted successfully';
-        resultStats.innerHTML = `<strong>${data.page_count}</strong> page${data.page_count > 1 ? 's' : ''} &middot; <strong>${formatSize(data.output_size)}</strong>`;
+        resultStats.innerHTML = `<strong>${formatSize(data.output_size)}</strong>`;
         result.classList.add('visible');
       } catch (err) {
         showError(err.message || 'Something went wrong. Please try again.');
