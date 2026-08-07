@@ -1,9 +1,6 @@
-asgiref==3.2.10
-Django==3.0.8
-fpdf==1.7.2
-img2pdf==0.4.0
-lxml==4.5.2
-pikepdf==1.18.0
-Pillow==7.2.0
-pytz==2020.1
-sqlparse==0.3.1
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+img2pdf==0.6.3
+pikepdf==9.3.0
+jinja2==3.1.4
