@@ -29,6 +29,7 @@ MEDIA_ROOT.mkdir(exist_ok=True)
 
 app = FastAPI(title="JPG to PDF Converter")
 app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
+app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 
