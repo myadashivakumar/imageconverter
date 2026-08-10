@@ -1,7 +1,7 @@
+import base64
 import html
 import io
 import tempfile
-import uuid
 import zipfile
 from pathlib import Path
 
@@ -22,16 +22,34 @@ from reportlab.lib.pagesizes import A4, LEGAL, LETTER
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 APP_DIR = Path(__file__).resolve().parent
-MEDIA_ROOT = BASE_DIR / "media"
-MEDIA_ROOT.mkdir(exist_ok=True)
 
 app = FastAPI(title="JPG to PDF Converter")
-app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
+
+MIME_TYPES = {
+    "pdf": "application/pdf",
+    "jpg": "image/jpeg",
+    "png": "image/png",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "zip": "application/zip",
+}
+
+
+def file_payload(data: bytes, ext: str) -> dict:
+    """Base64-encode file bytes for inline delivery in a JSON response.
+
+    No file is ever written to disk: the client builds a data: URI from this
+    directly. That keeps the app stateless, which matters on Lambda (each
+    request can land on a different, disk-isolated execution environment) and
+    is simply one less thing to clean up everywhere else.
+    """
+    return {
+        "file_data": base64.b64encode(data).decode("ascii"),
+        "mime_type": MIME_TYPES[ext],
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -103,11 +121,9 @@ async def jpgtopdf_upload(files: list[UploadFile] = File(...), page_size: str = 
 
     first_stem = Path(files[0].filename).stem or "converted"
     download_stem = first_stem if len(files) == 1 else f"{first_stem}-and-{len(files) - 1}-more"
-    pdf_name = f"{download_stem}-{uuid.uuid4().hex[:8]}.pdf"
-    (MEDIA_ROOT / pdf_name).write_bytes(pdf_bytes)
 
     return {
-        "pdf_url": f"/media/{pdf_name}",
+        **file_payload(pdf_bytes, "pdf"),
         "download_name": f"{download_stem}.pdf",
         "page_count": len(files),
         "output_size": len(pdf_bytes),
@@ -217,15 +233,12 @@ async def compress_upload(
         output_bytes, ext, quality_used, out_w, out_h = compress_to_quality(image, quality, max_dimension)
 
     stem = Path(file_photo.filename).stem or "image"
-    out_name = f"{stem}-compressed-{uuid.uuid4().hex[:8]}.{ext}"
-    (MEDIA_ROOT / out_name).write_bytes(output_bytes)
-
     original_size = len(contents)
     compressed_size = len(output_bytes)
     reduction_percent = round((1 - compressed_size / original_size) * 100, 1) if original_size else 0
 
     return {
-        "image_url": f"/media/{out_name}",
+        **file_payload(output_bytes, ext),
         "download_name": f"{stem}-compressed.{ext}",
         "original_size": original_size,
         "compressed_size": compressed_size,
@@ -289,11 +302,9 @@ async def mergepdf_upload(files: list[UploadFile] = File(...), page_size: str = 
 
     first_stem = Path(files[0].filename).stem or "merged"
     download_stem = f"{first_stem}-merged"
-    pdf_name = f"{download_stem}-{uuid.uuid4().hex[:8]}.pdf"
-    (MEDIA_ROOT / pdf_name).write_bytes(pdf_bytes)
 
     return {
-        "pdf_url": f"/media/{pdf_name}",
+        **file_payload(pdf_bytes, "pdf"),
         "download_name": f"{download_stem}.pdf",
         "page_count": page_count,
         "output_size": len(pdf_bytes),
@@ -409,11 +420,9 @@ async def wordtopdf_upload(files: list[UploadFile] = File(...), page_size: str =
 
     first_stem = Path(files[0].filename).stem or "converted"
     download_stem = first_stem if len(files) == 1 else f"{first_stem}-and-{len(files) - 1}-more"
-    pdf_name = f"{download_stem}-{uuid.uuid4().hex[:8]}.pdf"
-    (MEDIA_ROOT / pdf_name).write_bytes(pdf_bytes)
 
     return {
-        "pdf_url": f"/media/{pdf_name}",
+        **file_payload(pdf_bytes, "pdf"),
         "download_name": f"{download_stem}.pdf",
         "page_count": len(files),
         "output_size": len(pdf_bytes),
@@ -460,10 +469,8 @@ async def pdftoword_upload(files: list[UploadFile] = File(...)):
 
     if len(results) == 1:
         stem, docx_bytes = results[0]
-        out_name = f"{stem}-{uuid.uuid4().hex[:8]}.docx"
-        (MEDIA_ROOT / out_name).write_bytes(docx_bytes)
         return {
-            "file_url": f"/media/{out_name}",
+            **file_payload(docx_bytes, "docx"),
             "download_name": f"{stem}.docx",
             "output_size": len(docx_bytes),
             "is_zip": False,
@@ -483,13 +490,17 @@ async def pdftoword_upload(files: list[UploadFile] = File(...)):
             zf.writestr(name, docx_bytes)
     zip_bytes = buffer.getvalue()
 
-    zip_name = f"converted-documents-{uuid.uuid4().hex[:8]}.zip"
-    (MEDIA_ROOT / zip_name).write_bytes(zip_bytes)
-
     return {
-        "file_url": f"/media/{zip_name}",
+        **file_payload(zip_bytes, "zip"),
         "download_name": "converted-documents.zip",
         "output_size": len(zip_bytes),
         "is_zip": True,
         "file_count": len(results),
     }
+
+
+# Lambda entrypoint (unused outside Lambda - harmless everywhere else).
+# Mangum adapts API Gateway/Function URL events to ASGI calls into `app`.
+from mangum import Mangum  # noqa: E402
+
+handler = Mangum(app)

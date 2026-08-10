@@ -9,6 +9,15 @@ function formatSize(bytes) {
 }
 
 /**
+ * Builds a data: URI from an inline base64 file payload (see file_payload()
+ * in main.py). The server never writes results to disk - everything needed
+ * to preview and download the converted file comes back in this one response.
+ */
+function dataUriFrom(payload) {
+  return `data:${payload.mime_type};base64,${payload.file_data}`;
+}
+
+/**
  * Wires a dropzone + hidden file input for click-to-browse and drag-and-drop.
  * Note: drag-and-drop only fires on mouse-driven browsers; the click-to-browse
  * path is what mobile/touch users rely on, so it must always work standalone.

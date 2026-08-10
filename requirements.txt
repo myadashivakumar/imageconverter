@@ -10,3 +10,4 @@ pdf2docx==0.5.13
 # Pinned: the latest opencv-python-headless (5.x) ships no macOS wheel yet and
 # falls back to a slow from-source build. 4.10.0.84 has prebuilt wheels.
 opencv-python-headless==4.10.0.84
+mangum==0.21.0

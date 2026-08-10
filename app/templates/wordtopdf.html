@@ -145,8 +145,9 @@
           throw new Error(data.detail || 'Conversion failed');
         }
 
-        pdfPreview.src = data.pdf_url;
-        downloadLink.href = data.pdf_url;
+        const dataUri = dataUriFrom(data);
+        pdfPreview.src = dataUri;
+        downloadLink.href = dataUri;
         const defaultName = data.download_name || 'converted.pdf';
         filenameInput.value = defaultName.replace(/\.pdf$/i, '');
         downloadLink.setAttribute('download', defaultName);

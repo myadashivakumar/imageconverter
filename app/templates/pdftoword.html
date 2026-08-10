@@ -142,7 +142,7 @@
           throw new Error(data.detail || 'Conversion failed');
         }
 
-        downloadLink.href = data.file_url;
+        downloadLink.href = dataUriFrom(data);
         const defaultName = data.download_name || (data.is_zip ? 'documents.zip' : 'document.docx');
         resultExt = data.is_zip ? '.zip' : '.docx';
         const dot = defaultName.lastIndexOf('.');

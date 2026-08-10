@@ -1,0 +1,8 @@
+venv/
+media/
+.git/
+.github/
+deploy/
+__pycache__/
+*.pyc
+.DS_Store

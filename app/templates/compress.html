@@ -459,8 +459,9 @@
         }
 
         resultHeader.textContent = '✓ Reduced successfully';
-        imagePreview.src = data.image_url;
-        downloadLink.href = data.image_url;
+        const dataUri = dataUriFrom(data);
+        imagePreview.src = dataUri;
+        downloadLink.href = dataUri;
 
         const defaultName = (data.download_name || 'compressed.jpg');
         const dot = defaultName.lastIndexOf('.');
