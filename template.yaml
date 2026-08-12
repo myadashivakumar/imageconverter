@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Image & Document Tools - FastAPI on Lambda
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+
+Resources:
+  ImageConvertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ReservedConcurrentExecutions: 5 # cost safety cap, not a performance setting
+      FunctionUrlConfig:
+        AuthType: NONE # public, no request signing - same openness as the EC2 setup had
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: latest
+
+  ImageConvertFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ImageConvertFunction}
+      RetentionInDays: 14 # otherwise Lambda's auto-created log group keeps everything forever
+
+Outputs:
+  FunctionUrl:
+    Description: Public URL for the app
+    Value: !GetAtt ImageConvertFunctionUrl.FunctionUrl
