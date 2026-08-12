@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [master]
+    branches: [ec2-deploy]
   workflow_dispatch: {}
 
 jobs:
@@ -18,8 +18,8 @@ jobs:
           script: |
             set -e
             cd ~/app
-            git fetch origin master
-            git reset --hard origin/master
+            git fetch origin ec2-deploy
+            git reset --hard origin/ec2-deploy
             ./venv/bin/pip install -r requirements.txt
             sudo systemctl restart imagetools
             sudo systemctl status imagetools --no-pager
