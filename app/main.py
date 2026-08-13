@@ -11,10 +11,8 @@ from docx import Document
 from docx.oxml.ns import qn
 from docx.table import Table as DocxTable
 from docx.text.paragraph import Paragraph as DocxParagraph
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pdf2docx import Converter
 from PIL import Image, UnidentifiedImageError
 from reportlab.lib import colors
@@ -22,12 +20,18 @@ from reportlab.lib.pagesizes import A4, LEGAL, LETTER
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-APP_DIR = Path(__file__).resolve().parent
+app = FastAPI(title="Image & Document Tools API")
 
-app = FastAPI(title="JPG to PDF Converter")
-app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
-
-templates = Jinja2Templates(directory=APP_DIR / "templates")
+# Pure JSON API consumed by a separately-hosted web app and the Capacitor-wrapped
+# mobile app. allow_origins=["*"] is fine here: every endpoint is a stateless,
+# unauthenticated file conversion - there's no session/cookie data a hostile
+# origin could steal by riding along on these requests.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
 
 MIME_TYPES = {
     "pdf": "application/pdf",
@@ -36,6 +40,11 @@ MIME_TYPES = {
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "zip": "application/zip",
 }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 def file_payload(data: bytes, ext: str) -> dict:
@@ -50,11 +59,6 @@ def file_payload(data: bytes, ext: str) -> dict:
         "file_data": base64.b64encode(data).decode("ascii"),
         "mime_type": MIME_TYPES[ext],
     }
-
-
-@app.get("/", response_class=HTMLResponse)
-def landing(request: Request):
-    return templates.TemplateResponse(request, "landing.html", {})
 
 
 def normalize_image(contents: bytes, filename: str) -> bytes:
@@ -93,11 +97,6 @@ def get_page_layout(page_size: str):
     if not pagesize:
         return None
     return img2pdf.get_layout_fun(pagesize=pagesize, fit=img2pdf.FitMode.into)
-
-
-@app.get("/jpgtopdf/upload/", response_class=HTMLResponse)
-def jpgtopdf_form(request: Request):
-    return templates.TemplateResponse(request, "home.html", {})
 
 
 @app.post("/jpgtopdf/upload/")
@@ -196,11 +195,6 @@ def compress_to_target_size(
     return best[0], best[1], best[2], False, working.width, working.height
 
 
-@app.get("/compress/upload/", response_class=HTMLResponse)
-def compress_form(request: Request):
-    return templates.TemplateResponse(request, "compress.html", {})
-
-
 @app.post("/compress/upload/")
 async def compress_upload(
     file_photo: UploadFile = File(...),
@@ -277,11 +271,6 @@ def merge_pdfs(files_bytes: list[bytes], page_size: str) -> tuple[bytes, int]:
     buffer = io.BytesIO()
     output.save(buffer)
     return buffer.getvalue(), page_count
-
-
-@app.get("/mergepdf/upload/", response_class=HTMLResponse)
-def mergepdf_form(request: Request):
-    return templates.TemplateResponse(request, "mergepdf.html", {})
 
 
 @app.post("/mergepdf/upload/")
@@ -398,11 +387,6 @@ def docx_to_pdf_bytes(files_bytes: list[bytes], pagesize) -> bytes:
     return buffer.getvalue()
 
 
-@app.get("/wordtopdf/upload/", response_class=HTMLResponse)
-def wordtopdf_form(request: Request):
-    return templates.TemplateResponse(request, "wordtopdf.html", {})
-
-
 @app.post("/wordtopdf/upload/")
 async def wordtopdf_upload(files: list[UploadFile] = File(...), page_size: str = Form("a4")):
     if not files:
@@ -446,11 +430,6 @@ def pdf_to_docx_bytes(pdf_bytes: bytes) -> bytes:
             raise HTTPException(status_code=400, detail=f"Could not convert PDF: {exc}")
 
         return Path(tmp_docx_path).read_bytes()
-
-
-@app.get("/pdftoword/upload/", response_class=HTMLResponse)
-def pdftoword_form(request: Request):
-    return templates.TemplateResponse(request, "pdftoword.html", {})
 
 
 @app.post("/pdftoword/upload/")
